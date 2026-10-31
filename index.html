@@ -577,17 +577,17 @@ const START_VIEWS={1:[HOME],2:VIEWS[1],3:VIEWS[2],4:VIEWS[3]};
 function setCam(m,list,animate){ m.cam.style.transition=animate?'':'none'; m.cam.style.transform=viewFor(list); if(!animate){void m.cam.getBoundingClientRect();} }
 
 function routePrints(route){ // returns footprint positions along polyline
-  const pts=route.map(P); const out=[]; const spacing=19; let carry=0, side=1;
+  const pts=route.map(P); const out=[]; const spacing=15; let carry=0, side=1;
   for(let i=0;i<pts.length-1;i++){ const [ax,ay]=pts[i],[bx,by]=pts[i+1]; const L=Math.hypot(bx-ax,by-ay); if(!L)continue; const ux=(bx-ax)/L, uy=(by-ay)/L;
-    let d=carry; while(d<L){ const x=ax+ux*d - uy*6*side, y=ay+uy*d + ux*6*side; const ang=Math.atan2(uy,ux)*180/Math.PI+90; out.push({x,y,ang,side}); side*=-1; d+=spacing; } carry=d-L; }
+    let d=carry; while(d<L){ const x=ax+ux*d - uy*4.8*side, y=ay+uy*d + ux*4.8*side; const ang=Math.atan2(uy,ux)*180/Math.PI+90; out.push({x,y,ang,side}); side*=-1; d+=spacing; } carry=d-L; }
   return out; }
 
 const maps={};
 function setupMaps(){ document.querySelectorAll('[data-map]').forEach(s=>{const w=+s.dataset.map; maps[w]=buildMap(s.querySelector('.mapmount'),w);
   const m=maps[w]; setCam(m,VIEWS[w],false); m.prints=[];
   const segs = w===4?[1,2,3]:[w]; const prior = w===4?[]:[1,2,3].filter(k=>k<w);
-  prior.forEach(k=>routePrints(ROUTES[k]).forEach(f=>{const g=el('g',{transform:`translate(${f.x} ${f.y}) rotate(${f.ang}) scale(${f.side>0?-1.15:1.15},1.15)`},m.fp); el('use',{href:'#foot',class:'step-print old'},g);}));
-  segs.forEach(k=>routePrints(ROUTES[k]).forEach(f=>{const g=el('g',{transform:`translate(${f.x} ${f.y}) rotate(${f.ang}) scale(${f.side>0?-1.15:1.15},1.15)`},m.fp); m.prints.push(el('use',{href:'#foot',class:'step-print'},g));}));
+  prior.forEach(k=>routePrints(ROUTES[k]).forEach(f=>{const g=el('g',{transform:`translate(${f.x} ${f.y}) rotate(${f.ang}) scale(${f.side>0?-.85:.85},.85)`},m.fp); el('use',{href:'#foot',class:'step-print old'},g);}));
+  segs.forEach(k=>routePrints(ROUTES[k]).forEach(f=>{const g=el('g',{transform:`translate(${f.x} ${f.y}) rotate(${f.ang}) scale(${f.side>0?-.85:.85},.85)`},m.fp); m.prints.push(el('use',{href:'#foot',class:'step-print'},g));}));
   // lit prior stops
   STOPS.forEach((st,i)=>{ if(i<w-1) document.getElementById(`stop${w}_${i}`).classList.add('lit'); });
  }); }
@@ -599,7 +599,7 @@ function walk(w,instant){ const m=maps[w]; walkTimers.forEach(clearTimeout); wal
   if(instant){ setCam(m,VIEWS[w],false); }
   else { setCam(m,START_VIEWS[w],false); requestAnimationFrame(()=>requestAnimationFrame(()=>setCam(m,VIEWS[w],true))); }
   if(instant){ m.prints.forEach(p=>p.classList.add('on')); STOPS.forEach((s,i)=>{if(w===4||i===w-1)document.getElementById(`stop${w}_${i}`).classList.add('lit')}); return; }
-  const dt = w===4? 9 : Math.max(22, 5200/m.prints.length);
+  const dt = w===4? 9 : Math.max(14, 3000/m.prints.length);
   const startDelay = 900;
   m.prints.forEach((p,i)=>{ walkTimers.push(setTimeout(()=>{ p.classList.add('on'); if(w!==4 && i%2===0) step(0,.22); },startDelay+i*dt)); });
   walkTimers.push(setTimeout(()=>{ if(mp)mp.classList.add('arrive'); m.lantern.classList.remove('on'); if(w<4){ document.getElementById(`stop${w}_${w-1}`).classList.add('lit'); knock(0,.6);} else { STOPS.forEach((s,i)=>document.getElementById(`stop4_${i}`).classList.add('lit')); }},startDelay+m.prints.length*dt+300));
