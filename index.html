@@ -168,10 +168,10 @@ em{color:var(--ember2);font-style:italic}
 .stop{opacity:.35;transition:opacity 1s}
 .stop.lit{opacity:1}
 .stop.lit .stop-ring{filter:url(#glow)}
-.step-print{fill:var(--ember);opacity:0}
-.step-print.on{animation:stepin .5s ease-out forwards}
+.step-print{fill:var(--ember);opacity:0;transform-box:fill-box;transform-origin:center}
+.step-print.on{opacity:.8;animation:stepin .5s ease-out forwards}
 .step-print.old{opacity:.35}
-@keyframes stepin{0%{opacity:0;transform:scale(.4)}40%{opacity:1;transform:scale(1.15)}100%{opacity:.75;transform:scale(1)}}
+@keyframes stepin{0%{opacity:0;transform:scale(.4);fill:#fff3c4}35%{opacity:1;transform:scale(1.35);fill:#ffe6a8}100%{opacity:.8;transform:scale(1);fill:var(--ember)}}
 .lantern{fill:#fff3c4;filter:url(#glowBig);opacity:0;transition:opacity .6s}
 .lantern.on{opacity:1}
 .map-caption{position:absolute;left:0;bottom:0;z-index:10;width:1000px;padding:120px 80px 60px;background:radial-gradient(ellipse at 0% 100%,rgba(8,6,5,.92) 30%,rgba(8,6,5,0) 70%)}
@@ -586,8 +586,8 @@ const maps={};
 function setupMaps(){ document.querySelectorAll('[data-map]').forEach(s=>{const w=+s.dataset.map; maps[w]=buildMap(s.querySelector('.mapmount'),w);
   const m=maps[w]; setCam(m,VIEWS[w],false); m.prints=[];
   const segs = w===4?[1,2,3]:[w]; const prior = w===4?[]:[1,2,3].filter(k=>k<w);
-  prior.forEach(k=>routePrints(ROUTES[k]).forEach(f=>{el('use',{href:'#foot',class:'step-print old',transform:`translate(${f.x} ${f.y}) rotate(${f.ang}) scale(${f.side>0?-.75:.75},.75)`},m.fp);}));
-  segs.forEach(k=>routePrints(ROUTES[k]).forEach(f=>{m.prints.push(el('use',{href:'#foot',class:'step-print',transform:`translate(${f.x} ${f.y}) rotate(${f.ang}) scale(${f.side>0?-.75:.75},.75)`},m.fp));}));
+  prior.forEach(k=>routePrints(ROUTES[k]).forEach(f=>{const g=el('g',{transform:`translate(${f.x} ${f.y}) rotate(${f.ang}) scale(${f.side>0?-.75:.75},.75)`},m.fp); el('use',{href:'#foot',class:'step-print old'},g);}));
+  segs.forEach(k=>routePrints(ROUTES[k]).forEach(f=>{const g=el('g',{transform:`translate(${f.x} ${f.y}) rotate(${f.ang}) scale(${f.side>0?-.75:.75},.75)`},m.fp); m.prints.push(el('use',{href:'#foot',class:'step-print'},g));}));
   // lit prior stops
   STOPS.forEach((st,i)=>{ if(i<w-1) document.getElementById(`stop${w}_${i}`).classList.add('lit'); });
  }); }
@@ -601,8 +601,7 @@ function walk(w,instant){ const m=maps[w]; walkTimers.forEach(clearTimeout); wal
   if(instant){ m.prints.forEach(p=>p.classList.add('on')); STOPS.forEach((s,i)=>{if(w===4||i===w-1)document.getElementById(`stop${w}_${i}`).classList.add('lit')}); return; }
   const dt = w===4? 9 : Math.max(22, 5200/m.prints.length);
   const startDelay = 900;
-  m.prints.forEach((p,i)=>{ walkTimers.push(setTimeout(()=>{ p.classList.add('on'); const tr=p.getAttribute('transform').match(/translate\(([-\d.]+) ([-\d.]+)\)/);
-      m.lantern.setAttribute('cx',tr[1]); m.lantern.setAttribute('cy',tr[2]); m.lantern.classList.add('on'); if(w!==4 && i%2===0) step(0,.22); },startDelay+i*dt)); });
+  m.prints.forEach((p,i)=>{ walkTimers.push(setTimeout(()=>{ p.classList.add('on'); if(w!==4 && i%2===0) step(0,.22); },startDelay+i*dt)); });
   walkTimers.push(setTimeout(()=>{ if(mp)mp.classList.add('arrive'); m.lantern.classList.remove('on'); if(w<4){ document.getElementById(`stop${w}_${w-1}`).classList.add('lit'); knock(0,.6);} else { STOPS.forEach((s,i)=>document.getElementById(`stop4_${i}`).classList.add('lit')); }},startDelay+m.prints.length*dt+300));
 }
 
