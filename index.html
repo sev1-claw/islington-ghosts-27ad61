@@ -132,6 +132,17 @@ em{color:var(--ember2);font-style:italic}
 /* ---------- start overlay ---------- */
 #start{position:absolute;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:opacity 1.2s}
 #start.gone{opacity:0;pointer-events:none}
+#start .flamebox{height:60px;opacity:0;transform:scale(.15) translateY(30px);transform-origin:50% 100%;transition:opacity .35s ease, transform .9s cubic-bezier(.2,1.6,.4,1)}
+#start.lit .flamebox{opacity:1;transform:none}
+#start .wick{position:relative}
+#start .wick::before{content:'';position:absolute;left:50%;top:-12px;width:3px;height:13px;margin-left:-1.5px;background:#2a2118;border-radius:2px}
+#start .smoke{position:absolute;left:50%;top:calc(50% - 150px);width:40px;height:90px;margin-left:-20px;pointer-events:none;background:radial-gradient(ellipse at 50% 100%,rgba(180,170,155,.35),transparent 60%);filter:blur(6px);animation:smoke 3.5s ease-in-out infinite;transition:opacity .4s}
+#start.lit .smoke{opacity:0}
+@keyframes smoke{0%{transform:translateY(20px) scaleX(.6);opacity:0}30%{opacity:.8}100%{transform:translateY(-40px) scaleX(1.4) rotate(8deg);opacity:0}}
+#start .halo{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 40%,rgba(255,150,50,.28),rgba(255,120,30,.06) 30%,transparent 55%);opacity:0;transition:opacity 1.4s ease}
+#start.lit .halo{opacity:1;animation:flicker 3.2s infinite}
+#start .hint,#start .hint2{transition:opacity .6s}
+#start.lit .hint,#start.lit .hint2{opacity:0}
 #start .flame{width:34px;height:60px;background:radial-gradient(ellipse at 50% 70%,#fff6d0 0%,#ffcf6a 30%,#ff8a1c 60%,transparent 72%);border-radius:50% 50% 45% 45%/60% 60% 40% 40%;animation:flame 1.4s infinite alternate;filter:blur(.5px);box-shadow:0 0 80px 30px rgba(255,140,40,.25)}
 #start .wick{width:30px;height:110px;background:linear-gradient(#efe4cc,#b9a785);border-radius:4px;margin-top:4px}
 @keyframes flame{0%{transform:scaleY(1) rotate(-2deg)}50%{transform:scaleY(1.08) rotate(2deg)}100%{transform:scaleY(.95) rotate(-1deg)}}
@@ -249,7 +260,7 @@ body.print *{animation:none!important;transition:none!important}
 <body>
 <div id="viewport"><div id="stage">
 
-<div id="start"><div class="flame"></div><div class="wick"></div>
+<div id="start"><div class="halo"></div><div class="flamebox"><div class="flame"></div></div><div class="smoke"></div><div class="wick"></div>
   <div class="hint">НАЖМИТЕ, ЧТОБЫ ЗАЖЕЧЬ СВЕЧУ</div>
   <div class="hint2">→ / пробел — дальше · ← — назад · F — полный экран · M — звук · N — подсказки спикеру</div>
 </div>
@@ -646,10 +657,20 @@ document.querySelectorAll('.coffin').forEach(c=>c.addEventListener('click',e=>{e
 
 /* input */
 const startEl=document.getElementById('start');
-function begin(){ if(!startEl.classList.contains('gone')){ initAudio(); startWind(); startEl.classList.add('gone'); show(cur<0?0:cur); return true;} return false; }
+let started=false;
+function ignite(){ if(!AC||muted)return; const t=AC.currentTime;
+  const n=AC.createBufferSource(); n.buffer=noiseBuf(.35); const f=AC.createBiquadFilter(); f.type='highpass'; f.frequency.value=2500; const g=AC.createGain();
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.5,t+.03); g.gain.exponentialRampToValueAtTime(.001,t+.3); n.connect(f).connect(g).connect(master); n.start(t);
+  const w=AC.createBufferSource(); w.buffer=noiseBuf(1.4); const f2=AC.createBiquadFilter(); f2.type='lowpass'; f2.frequency.setValueAtTime(300,t+.15); f2.frequency.linearRampToValueAtTime(1200,t+.5); f2.frequency.linearRampToValueAtTime(400,t+1.3);
+  const g2=AC.createGain(); g2.gain.setValueAtTime(0,t+.15); g2.gain.linearRampToValueAtTime(.45,t+.45); g2.gain.exponentialRampToValueAtTime(.001,t+1.4); w.connect(f2).connect(g2).connect(master); w.start(t+.15); }
+function begin(){ if(started)return false; started=true; initAudio(); ignite(); startEl.classList.add('lit');
+  const target=cur<0?0:cur;
+  setTimeout(()=>{ startWind(); startEl.classList.add('gone'); if(!document.querySelector('.slide.active')) show(target); },2200);
+  return true; }
+const ready=()=>startEl.classList.contains('gone')||!document.body.contains(startEl);
 startEl.addEventListener('click',e=>{e.stopPropagation();begin();});
 document.addEventListener('keydown',e=>{
-  if(begin()&&['ArrowRight',' ','PageDown','Enter'].includes(e.key))return;
+  if(!ready()){ if(['ArrowRight',' ','PageDown','Enter'].includes(e.key)){e.preventDefault();begin();} else if('fFаА'.includes(e.key)&&e.key.length===1){ if(!document.fullscreenElement)document.documentElement.requestFullscreen(); else document.exitFullscreen(); } return; }
   if(['ArrowRight',' ','PageDown','Enter'].includes(e.key)){e.preventDefault();next();}
   else if(['ArrowLeft','PageUp','Backspace'].includes(e.key)){e.preventDefault();prev();}
   else if(e.key==='f'||e.key==='F'||e.key==='а'||e.key==='А'){ if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen(); }
@@ -659,7 +680,7 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='1'){ if(slides[cur].id==='s-graves')hitCoffin(0);} else if(e.key==='2'){ if(slides[cur].id==='s-graves')hitCoffin(1);}
   else if(e.key==='Home'){show(0);}
 });
-document.addEventListener('click',e=>{ if(begin())return; if(e.target.closest('#notes'))return; (e.clientX<innerWidth*0.25)?prev():next(); });
+document.addEventListener('click',e=>{ if(!ready()){begin();return;} if(e.target.closest('#notes'))return; (e.clientX<innerWidth*0.25)?prev():next(); });
 
 /* boot */
 setupMaps();
